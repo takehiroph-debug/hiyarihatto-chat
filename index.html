@@ -1,0 +1,953 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>林業ヒヤリハット報告チャット</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .chat-message {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .typing-indicator {
+            display: inline-block;
+        }
+        .typing-indicator span {
+            animation: blink 1.4s infinite;
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #9ca3af;
+            margin: 0 2px;
+        }
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        @keyframes blink {
+            0%, 60%, 100% { opacity: 0.3; }
+            30% { opacity: 1; }
+        }
+        .recording {
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div class="max-w-4xl mx-auto p-4 h-screen flex flex-col">
+        <!-- Header -->
+        <div class="bg-green-700 text-white p-4 rounded-t-lg shadow-md">
+            <h1 class="text-2xl font-bold">🌲 林業ヒヤリハット報告チャット</h1>
+            <p class="text-sm text-green-100 mt-1">マイクボタンを押して話すか、テキストで入力してください</p>
+        </div>
+
+        <!-- Chat Area -->
+        <div id="chatArea" class="flex-1 bg-white p-4 overflow-y-auto space-y-4 border-x border-gray-200">
+            <!-- Messages will be inserted here -->
+        </div>
+
+        <!-- Input Area -->
+        <div class="bg-white p-4 border-x border-b border-gray-200 rounded-b-lg shadow-md">
+            <div class="flex gap-2">
+                <button 
+                    id="voiceButton"
+                    onclick="toggleVoiceInput()"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                    title="音声入力"
+                >
+                    <span id="voiceIcon" class="text-2xl">🎤</span>
+                </button>
+                <input 
+                    type="text" 
+                    id="userInput" 
+                    placeholder="メッセージを入力するか、マイクボタンで音声入力..."
+                    class="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
+                    onkeypress="if(event.key === 'Enter') sendMessage()"
+                />
+                <button 
+                    onclick="sendMessage()"
+                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
+                >
+                    送信
+                </button>
+            </div>
+            <div class="mt-2 flex items-center gap-3">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input 
+                        type="checkbox" 
+                        id="autoReadToggle" 
+                        checked
+                        onchange="toggleAutoRead()"
+                        class="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+                    />
+                    <span class="text-sm text-gray-700">返答を音声で読み上げる</span>
+                </label>
+                <span id="voiceStatus" class="text-sm text-gray-500"></span>
+            </div>
+            <div id="buttonArea" class="mt-3 flex flex-wrap gap-2">
+                <!-- Quick reply buttons will be inserted here -->
+            </div>
+        </div>
+
+        <!-- Report Modal -->
+        <div id="reportModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
+                <div class="p-6">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-4">📋 ヒヤリハット報告書</h2>
+                    <div id="reportContent" class="prose max-w-none"></div>
+                    <div class="mt-6 flex flex-wrap gap-3">
+                        <button onclick="copyReport()" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors">
+                            📋 コピーする
+                        </button>
+                        <button onclick="downloadReport()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors">
+                            💾 ダウンロード
+                        </button>
+                        <button onclick="generateStory()" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors">
+                            📖 物語にする
+                        </button>
+                        <button onclick="closeModal()" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-4 py-3 rounded-lg font-semibold transition-colors">
+                            閉じる
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 音声認識と音声合成の設定
+        let recognition = null;
+        let isRecording = false;
+        let autoRead = true;
+        let currentUtterance = null;
+
+        // 音声認識の初期化
+        function initSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                recognition = new SpeechRecognition();
+                recognition.lang = 'ja-JP';
+                recognition.continuous = false;
+                recognition.interimResults = false;
+
+                recognition.onstart = function() {
+                    isRecording = true;
+                    document.getElementById('voiceIcon').textContent = '⏹️';
+                    document.getElementById('voiceButton').classList.add('recording');
+                    document.getElementById('voiceStatus').textContent = '聞いています...';
+                };
+
+                recognition.onresult = function(event) {
+                    const transcript = event.results[0][0].transcript;
+                    document.getElementById('userInput').value = transcript;
+                    document.getElementById('voiceStatus').textContent = '認識しました';
+                };
+
+                recognition.onerror = function(event) {
+                    console.error('音声認識エラー:', event.error);
+                    document.getElementById('voiceStatus').textContent = 'エラーが発生しました';
+                    stopRecording();
+                };
+
+                recognition.onend = function() {
+                    stopRecording();
+                };
+            } else {
+                alert('お使いのブラウザは音声認識に対応していません。Chrome、Edge、Safariをお試しください。');
+            }
+        }
+
+        function toggleVoiceInput() {
+            if (!recognition) {
+                initSpeechRecognition();
+            }
+
+            if (isRecording) {
+                recognition.stop();
+            } else {
+                // 既存の音声読み上げを停止
+                if (currentUtterance) {
+                    speechSynthesis.cancel();
+                }
+                recognition.start();
+            }
+        }
+
+        function stopRecording() {
+            isRecording = false;
+            document.getElementById('voiceIcon').textContent = '🎤';
+            document.getElementById('voiceButton').classList.remove('recording');
+            setTimeout(() => {
+                document.getElementById('voiceStatus').textContent = '';
+            }, 3000);
+        }
+
+        function toggleAutoRead() {
+            autoRead = document.getElementById('autoReadToggle').checked;
+        }
+
+        function speakText(text) {
+            if (!autoRead) return;
+
+            // 既存の読み上げを停止
+            speechSynthesis.cancel();
+
+            currentUtterance = new SpeechSynthesisUtterance(text);
+            currentUtterance.lang = 'ja-JP';
+            currentUtterance.rate = 1.0;
+            currentUtterance.pitch = 1.0;
+
+            // 日本語の音声を探す
+            const voices = speechSynthesis.getVoices();
+            const jaVoice = voices.find(voice => voice.lang.startsWith('ja'));
+            if (jaVoice) {
+                currentUtterance.voice = jaVoice;
+            }
+
+            speechSynthesis.speak(currentUtterance);
+        }
+
+        // 音声の準備
+        if ('speechSynthesis' in window) {
+            speechSynthesis.onvoiceschanged = function() {
+                speechSynthesis.getVoices();
+            };
+        }
+
+        const conversationState = {
+            stage: 'initial',
+            data: {
+                date: '',
+                location: '',
+                situation: '',
+                action: '',
+                result: '',
+                cause: '',
+                prevention: '',
+                workerName: '',
+                reporterRole: ''
+            },
+            chatHistory: []
+        };
+
+        const questions = {
+            initial: {
+                message: "こんにちは。ヒヤリハット事例の報告をお願いします。\n\nまず、いつ起きたことですか?（例：今日、昨日、1月15日など）",
+                field: 'date',
+                next: 'location'
+            },
+            location: {
+                message: "ありがとうございます。\n\nどこで起きましたか?（例：A区画の斜面、作業道沿い、○○山の伐採現場など）",
+                field: 'location',
+                next: 'situation'
+            },
+            situation: {
+                message: "わかりました。\n\nどんな状況でしたか? 何をしていた時に起きたのか、できるだけ詳しく教えてください。",
+                field: 'situation',
+                next: 'action'
+            },
+            action: {
+                message: "その時、何が起こりましたか？",
+                field: 'action',
+                next: 'result'
+            },
+            result: {
+                message: "結果はどうでしたか? ケガはありましたか? 機械や道具に損傷はありましたか?",
+                field: 'result',
+                next: 'cause',
+                buttons: ['ケガなし', '軽いケガ', '機械の損傷あり', '特に問題なし']
+            },
+            cause: {
+                message: "なぜそのような状況になったと思いますか? 原因について思うことがあれば教えてください。",
+                field: 'cause',
+                next: 'prevention'
+            },
+            prevention: {
+                message: "今後同じことが起きないようにするには、どうすればいいと思いますか?",
+                field: 'prevention',
+                next: 'workerName'
+            },
+            workerName: {
+                message: "最後に、報告者のお名前を教えてください。（匿名希望の場合は「匿名」と入力してください）",
+                field: 'workerName',
+                next: 'complete'
+            },
+            complete: {
+                message: "ありがとうございました。報告書を作成しました。\n\n内容を確認して、必要に応じて共有してください。",
+                field: null,
+                next: null
+            }
+        };
+
+        function addMessage(content, isUser = false, shouldSpeak = true) {
+            const chatArea = document.getElementById('chatArea');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `chat-message flex ${isUser ? 'justify-end' : 'justify-start'}`;
+            
+            const bubble = document.createElement('div');
+            bubble.className = `max-w-[80%] rounded-lg p-3 ${
+                isUser 
+                    ? 'bg-green-600 text-white' 
+                    : 'bg-gray-100 text-gray-800'
+            }`;
+            bubble.style.whiteSpace = 'pre-wrap';
+            bubble.textContent = content;
+            
+            messageDiv.appendChild(bubble);
+            chatArea.appendChild(messageDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+
+            // ボットのメッセージを音声で読み上げ
+            if (!isUser && shouldSpeak) {
+                speakText(content);
+            }
+        }
+
+        function showTypingIndicator() {
+            const chatArea = document.getElementById('chatArea');
+            const indicatorDiv = document.createElement('div');
+            indicatorDiv.id = 'typingIndicator';
+            indicatorDiv.className = 'chat-message flex justify-start';
+            indicatorDiv.innerHTML = `
+                <div class="bg-gray-100 rounded-lg p-3">
+                    <div class="typing-indicator">
+                        <span></span>
+                        <span></span>
+                        <span></span>
+                    </div>
+                </div>
+            `;
+            chatArea.appendChild(indicatorDiv);
+            chatArea.scrollTop = chatArea.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            const indicator = document.getElementById('typingIndicator');
+            if (indicator) {
+                indicator.remove();
+            }
+        }
+
+        function showButtons(buttons) {
+            const buttonArea = document.getElementById('buttonArea');
+            buttonArea.innerHTML = '';
+            
+            if (buttons && buttons.length > 0) {
+                buttons.forEach(buttonText => {
+                    const button = document.createElement('button');
+                    button.textContent = buttonText;
+                    button.className = 'bg-green-100 hover:bg-green-200 text-green-800 px-4 py-2 rounded-lg text-sm font-medium transition-colors';
+                    button.onclick = () => {
+                        document.getElementById('userInput').value = buttonText;
+                        sendMessage();
+                    };
+                    buttonArea.appendChild(button);
+                });
+            }
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('userInput');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // 音声読み上げを停止
+            speechSynthesis.cancel();
+            
+            addMessage(message, true, false);
+            input.value = '';
+            
+            // Clear quick reply buttons
+            document.getElementById('buttonArea').innerHTML = '';
+            
+            // Store user response
+            const currentQuestion = questions[conversationState.stage];
+            if (currentQuestion.field) {
+                conversationState.data[currentQuestion.field] = message;
+            }
+            
+            // Move to next stage
+            conversationState.stage = currentQuestion.next;
+            
+            // Show bot response
+            showTypingIndicator();
+            setTimeout(() => {
+                hideTypingIndicator();
+                
+                if (conversationState.stage === 'complete') {
+                    addMessage(questions.complete.message);
+                    setTimeout(() => {
+                        generateReport();
+                    }, 1000);
+                } else {
+                    const nextQuestion = questions[conversationState.stage];
+                    addMessage(nextQuestion.message);
+                    if (nextQuestion.buttons) {
+                        showButtons(nextQuestion.buttons);
+                    }
+                }
+            }, 1000);
+        }
+
+        function generateReport() {
+            const data = conversationState.data;
+            const now = new Date();
+            const reportDate = now.toLocaleString('ja-JP');
+            
+            const reportHTML = `
+                <div class="space-y-4">
+                    <div class="bg-green-50 border-l-4 border-green-600 p-4">
+                        <p class="text-sm text-gray-600">報告日時: ${reportDate}</p>
+                    </div>
+                    
+                    <div class="border-b pb-3">
+                        <h3 class="font-bold text-gray-700 mb-1">📅 発生日時</h3>
+                        <p class="text-gray-800">${data.date}</p>
+                    </div>
+                    
+                    <div class="border-b pb-3">
+                        <h3 class="font-bold text-gray-700 mb-1">📍 発生場所</h3>
+                        <p class="text-gray-800">${data.location}</p>
+                    </div>
+                    
+                    <div class="border-b pb-3">
+                        <h3 class="font-bold text-gray-700 mb-1">⚠️ 状況・経緯</h3>
+                        <p class="text-gray-800">${data.situation}</p>
+                    </div>
+                    
+                    <div class="border-b pb-3">
+                        <h3 class="font-bold text-gray-700 mb-1">🔄 取った行動</h3>
+                        <p class="text-gray-800">${data.action}</p>
+                    </div>
+                    
+                    <div class="border-b pb-3">
+                        <h3 class="font-bold text-gray-700 mb-1">📊 結果</h3>
+                        <p class="text-gray-800">${data.result}</p>
+                    </div>
+                    
+                    <div class="border-b pb-3">
+                        <h3 class="font-bold text-gray-700 mb-1">🔍 原因分析</h3>
+                        <p class="text-gray-800">${data.cause}</p>
+                    </div>
+                    
+                    <div class="border-b pb-3">
+                        <h3 class="font-bold text-gray-700 mb-1">✅ 再発防止策</h3>
+                        <p class="text-gray-800">${data.prevention}</p>
+                    </div>
+                    
+                    <div class="bg-gray-50 p-4 rounded">
+                        <p class="text-sm text-gray-700"><strong>報告者:</strong> ${data.workerName}</p>
+                    </div>
+                </div>
+            `;
+            
+            document.getElementById('reportContent').innerHTML = reportHTML;
+            document.getElementById('reportModal').classList.remove('hidden');
+        }
+
+        function getReportText() {
+            const data = conversationState.data;
+            const now = new Date();
+            const reportDate = now.toLocaleString('ja-JP');
+            
+            return `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+林業ヒヤリハット報告書
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+報告日時: ${reportDate}
+
+【発生日時】
+${data.date}
+
+【発生場所】
+${data.location}
+
+【状況・経緯】
+${data.situation}
+
+【取った行動】
+${data.action}
+
+【結果】
+${data.result}
+
+【原因分析】
+${data.cause}
+
+【再発防止策】
+${data.prevention}
+
+【報告者情報】
+報告者: ${data.workerName}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            `.trim();
+        }
+
+        function copyReport() {
+            const reportText = getReportText();
+            navigator.clipboard.writeText(reportText).then(() => {
+                alert('報告書をクリップボードにコピーしました！');
+            });
+        }
+
+        function downloadReport() {
+            const reportText = getReportText();
+            const blob = new Blob([reportText], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `ヒヤリハット報告_${new Date().toISOString().split('T')[0]}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function closeModal() {
+            document.getElementById('reportModal').classList.add('hidden');
+            
+            // Show restart button
+            setTimeout(() => {
+                const buttonArea = document.getElementById('buttonArea');
+                buttonArea.innerHTML = '';
+                const restartButton = document.createElement('button');
+                restartButton.textContent = '🔄 新しい報告を作成';
+                restartButton.className = 'bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors';
+                restartButton.onclick = () => location.reload();
+                buttonArea.appendChild(restartButton);
+            }, 300);
+        }
+
+        function generateStory() {
+            const data = conversationState.data;
+            
+            // 語り口のパターンをランダムに選択
+            const patterns = [
+                generatePattern1(data),
+                generatePattern2(data),
+                generatePattern3(data),
+                generatePattern4(data),
+                generatePattern5(data)
+            ];
+            
+            const randomIndex = Math.floor(Math.random() * patterns.length);
+            const story = patterns[randomIndex];
+            
+            // 物語を表示
+            const reportContent = document.getElementById('reportContent');
+            reportContent.innerHTML = `<pre class="whitespace-pre-wrap text-sm leading-relaxed text-gray-800 bg-amber-50 p-4 rounded">${story}</pre>`;
+            
+            // 現在の物語を保存（コピー用）
+            window.currentStory = story;
+            
+            // ボタンのテキストを変更
+            const buttonContainer = document.querySelector('#reportModal .mt-6');
+            buttonContainer.innerHTML = `
+                <button onclick="copyStory()" class="w-full sm:flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors">
+                    📋 物語をコピー
+                </button>
+                <button onclick="downloadStory()" class="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors">
+                    💾 物語をダウンロード
+                </button>
+                <button onclick="generateStory()" class="w-full sm:flex-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors">
+                    🔄 別の語り口で
+                </button>
+                <button onclick="backToReport()" class="w-full sm:flex-1 bg-gray-400 hover:bg-gray-500 text-white px-4 py-3 rounded-lg font-semibold transition-colors">
+                    ← 報告書に戻る
+                </button>
+                <button onclick="closeModal()" class="w-full sm:flex-1 bg-gray-500 hover:bg-gray-600 text-white px-4 py-3 rounded-lg font-semibold transition-colors">
+                    閉じる
+                </button>
+            `;
+            buttonContainer.className = 'mt-6 flex flex-col sm:flex-row flex-wrap gap-3';
+            
+            // タイトルを変更
+            document.querySelector('#reportModal h2').textContent = '📖 教育用物語';
+        }
+
+        // パターン1: ドキュメンタリー風
+        function generatePattern1(data) {
+            return `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【安全教育資料】ある日の現場で
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+■ タイトル：ヒヤリとした瞬間
+
+${data.date}のことだった。
+
+${data.location}で作業をしていた${data.workerName}さんは、いつものように仕事を進めていた。
+
+${data.situation}
+
+その時である。
+
+${data.action}
+
+幸い、${data.result}
+
+「危なかった...」
+
+${data.workerName}さんは胸をなでおろした。
+
+後で冷静に考えてみると、この出来事には明確な原因があった。
+
+${data.cause}
+
+この経験から、${data.workerName}さんは大切なことを学んだ。
+
+${data.prevention}
+
+「同じ過ちは二度と繰り返さない」
+
+${data.workerName}さんはそう心に誓った。
+
+そして、この経験を仲間たちと共有することにした。
+自分と同じ目に遭う人が一人でも減るように。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【この事例から学ぶべきこと】
+
+◆ 危険のポイント
+  ${data.cause}
+
+◆ 対策
+  ${data.prevention}
+
+◆ みなさんへのメッセージ
+  この事例は、日常的な作業の中でも思わぬ危険が潜んでいることを
+  教えてくれます。「自分は大丈夫」と思わず、常に安全を意識して
+  作業に取り組みましょう。
+
+  報告者：${data.workerName}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            `.trim();
+        }
+
+        // パターン2: 対話形式
+        function generatePattern2(data) {
+            return `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【安全朝礼資料】先輩から学ぶ安全のコツ
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+新人：「${data.workerName}さん、何か最近ヒヤッとしたことありました？」
+
+${data.workerName}：「ああ、実はな。${data.date}の話なんだが...」
+
+■ その日の出来事
+
+場所は${data.location}。
+
+${data.workerName}さんが体験した出来事だ。
+
+「その時はこうだった。${data.situation}」
+
+新人：「それで、どうなったんですか？」
+
+「${data.action}」
+
+新人：「大丈夫だったんですか？」
+
+「${data.result}」
+
+新人：「良かったですね...でも、なんでそうなったんでしょう？」
+
+${data.workerName}：「後で考えたんだが、${data.cause}」
+
+新人：「なるほど...次からはどうすればいいんですか？」
+
+「${data.prevention}」
+
+新人：「勉強になります。気をつけます！」
+
+${data.workerName}：「おう。俺みたいにヒヤッとする前に、お前は気をつけてくれよ」
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【安全のポイント】
+✓ 原因：${data.cause}
+✓ 対策：${data.prevention}
+
+経験者の声を聞いて、同じ失敗を繰り返さないようにしましょう。
+
+報告：${data.workerName}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            `.trim();
+        }
+
+        // パターン3: 時系列レポート風
+        function generatePattern3(data) {
+            return `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【ヒヤリハット事例レポート】
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+▼ 発生日時
+${data.date}
+
+▼ 発生場所
+${data.location}
+
+▼ 作業者
+${data.workerName}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+■ 何が起きたのか？
+
+作業は順調に進んでいた。
+しかし——
+
+${data.situation}
+
+予期せぬ事態が発生した。
+
+${data.action}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+■ 結果
+
+${data.result}
+
+今回は幸いにも大事には至らなかった。
+だが、一歩間違えれば重大な事故につながっていた可能性がある。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+■ 原因分析
+
+なぜこのような事態が発生したのか？
+
+【分析結果】
+${data.cause}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+■ 再発防止策
+
+同じことを繰り返さないために：
+
+【対策】
+${data.prevention}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+■ 報告者からのメッセージ
+
+「私の経験が、皆さんの安全につながれば幸いです。
+ どんなに慣れた作業でも、油断は禁物。
+ 常に安全第一で作業に臨みましょう」
+
+—— ${data.workerName}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            `.trim();
+        }
+
+        // パターン4: 劇場風
+        function generatePattern4(data) {
+            return `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【安全教育ショートストーリー】
+もし、あの時...
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+時：${data.date}
+所：${data.location}
+人：${data.workerName}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【第一幕】日常の作業
+
+朝から現場は活気に満ちていた。
+
+${data.workerName}も、いつもと変わらぬ一日が始まると思っていた。
+
+${data.situation}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【第二幕】予期せぬ瞬間
+
+突然——
+
+${data.action}
+
+心臓が一瞬止まるかと思った。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【第三幕】幸運と教訓
+
+結果：${data.result}
+
+「もし、タイミングがほんの少しでもずれていたら...」
+
+そう考えると、背筋が凍る思いだった。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【エピローグ】学んだこと
+
+${data.workerName}は気づいた。
+
+今回の出来事の背景には、こんな要因があったのだと——
+
+${data.cause}
+
+「これからは、こうしよう」
+
+${data.workerName}は決意を新たにした。
+
+${data.prevention}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+【観客の皆さんへ】
+
+このストーリーは、実際に起きた出来事です。
+舞台の上の出来事ではありません。
+
+あなたの職場でも、明日起こりうることなのです。
+
+「自分には関係ない」
+そう思った瞬間が、一番危険なのです。
+
+語り部：${data.workerName}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            `.trim();
+        }
+
+        // パターン5: 手紙風
+        function generatePattern5(data) {
+            return `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+【現場から現場へ】安全への手紙
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+親愛なる仲間たちへ
+
+${data.workerName}です。
+
+今日は、皆さんに伝えたいことがあって、この手紙を書いています。
+
+${data.date}、私は${data.location}で作業をしていました。
+
+いつもと同じ、何気ない一日のはずでした。
+
+ところが——
+
+${data.situation}
+
+その瞬間、私は思わず身構えました。
+
+${data.action}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+幸いなことに、${data.result}
+
+でも、正直に言います。
+心臓が止まるかと思うほど、怖かった。
+
+家に帰って、この日のことを何度も思い返しました。
+
+「なぜ、あんなことが起きたんだろう？」
+
+答えは明白でした。
+
+${data.cause}
+
+もっと注意していれば、防げたはずです。
+もっと慎重であれば、あんなヒヤッとすることはなかったはずです。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+だからこそ、皆さんにお願いがあります。
+
+${data.prevention}
+
+私のような経験を、皆さんにはしてほしくありません。
+
+いや、私だけでなく、皆さん自身も、
+家族が待つ家に、無事に帰りたいですよね？
+
+安全は、一人ひとりの意識から始まります。
+
+「これくらい大丈夫」
+「いつもやってるから」
+
+そんな油断が、取り返しのつかない事故を招くのです。
+
+どうか、私の経験を無駄にしないでください。
+
+皆さんの安全を、心から願っています。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+${data.date}
+${data.workerName} より
+
+P.S. この経験を共有することで、少しでも皆さんの役に立てれば嬉しいです。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            `.trim();
+        }
+
+        function getStoryText() {
+            return window.currentStory || '';
+        }
+
+        function copyStory() {
+            const storyText = getStoryText();
+            navigator.clipboard.writeText(storyText).then(() => {
+                alert('物語をクリップボードにコピーしました！');
+            });
+        }
+
+        function downloadStory() {
+            const storyText = getStoryText();
+            const blob = new Blob([storyText], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `安全教育物語_${new Date().toISOString().split('T')[0]}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function backToReport() {
+            // 元の報告書を再生成
+            generateReport();
+        }
+
+        // Initialize chat
+        window.onload = function() {
+            addMessage("こんにちは。ヒヤリハット事例の報告をお願いします。\n\nまず、いつ起きたことですか?（例：今日、昨日、1月15日など）");
+        };
+    </script>
+</body>
+</html>

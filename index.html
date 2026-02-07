@@ -4,14 +4,78 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>林業ヒヤリハット報告チャット</title>
-    <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: #f9fafb;
+            line-height: 1.6;
+        }
+        .container {
+            max-width: 56rem;
+            margin: 0 auto;
+            padding: 1rem;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .header {
+            background-color: #15803d;
+            color: white;
+            padding: 1rem;
+            border-radius: 0.5rem 0.5rem 0 0;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            font-size: 1.5rem;
+            font-weight: bold;
+        }
+        .header p {
+            font-size: 0.875rem;
+            color: #bbf7d0;
+            margin-top: 0.25rem;
+        }
+        .chat-area {
+            flex: 1;
+            background-color: white;
+            padding: 1rem;
+            overflow-y: auto;
+            border-left: 1px solid #e5e7eb;
+            border-right: 1px solid #e5e7eb;
+        }
         .chat-message {
             animation: fadeIn 0.3s ease-in;
+            margin-bottom: 1rem;
+            display: flex;
         }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
+        }
+        .message-left {
+            justify-content: flex-start;
+        }
+        .message-right {
+            justify-content: flex-end;
+        }
+        .bubble {
+            max-width: 80%;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .bubble-bot {
+            background-color: #f3f4f6;
+            color: #1f2937;
+        }
+        .bubble-user {
+            background-color: #16a34a;
+            color: white;
         }
         .typing-indicator {
             display: inline-block;
@@ -42,97 +106,289 @@
             0%, 100% { transform: scale(1); }
             50% { transform: scale(1.1); }
         }
+        .input-area {
+            background-color: white;
+            padding: 1rem;
+            border: 1px solid #e5e7eb;
+            border-radius: 0 0 0.5rem 0.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .input-row {
+            display: flex;
+            gap: 0.5rem;
+        }
+        .btn {
+            padding: 0.75rem 1rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 1rem;
+        }
+        .btn-voice {
+            background-color: #2563eb;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 3.5rem;
+        }
+        .btn-voice:hover {
+            background-color: #1d4ed8;
+        }
+        .btn-send {
+            background-color: #16a34a;
+            color: white;
+            padding-left: 1.5rem;
+            padding-right: 1.5rem;
+        }
+        .btn-send:hover {
+            background-color: #15803d;
+        }
+        .text-input {
+            flex: 1;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            font-size: 1rem;
+        }
+        .text-input:focus {
+            outline: none;
+            border-color: #16a34a;
+            box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.1);
+        }
+        .checkbox-row {
+            margin-top: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            color: #374151;
+        }
+        .checkbox {
+            width: 1rem;
+            height: 1rem;
+            cursor: pointer;
+        }
+        .status-text {
+            font-size: 0.875rem;
+            color: #6b7280;
+        }
+        .button-area {
+            margin-top: 0.75rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .btn-quick {
+            background-color: #dcfce7;
+            color: #166534;
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-quick:hover {
+            background-color: #bbf7d0;
+        }
+        .modal {
+            position: fixed;
+            inset: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            z-index: 1000;
+        }
+        .modal.hidden {
+            display: none;
+        }
+        .modal-content {
+            background-color: white;
+            border-radius: 0.5rem;
+            max-width: 48rem;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+            padding: 1.5rem;
+        }
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 1rem;
+        }
+        .report-content {
+            font-size: 0.875rem;
+            line-height: 1.75;
+        }
+        .report-section {
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 0.75rem;
+        }
+        .report-section:last-child {
+            border-bottom: none;
+        }
+        .report-label {
+            font-weight: bold;
+            color: #374151;
+            margin-bottom: 0.25rem;
+        }
+        .report-value {
+            color: #1f2937;
+        }
+        .report-info {
+            background-color: #f9fafb;
+            padding: 1rem;
+            border-radius: 0.25rem;
+        }
+        .report-alert {
+            background-color: #f0fdf4;
+            border-left: 4px solid #16a34a;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+        .modal-buttons {
+            margin-top: 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+        }
+        .btn-modal {
+            flex: 1;
+            min-width: 120px;
+            padding: 0.75rem 1rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-green {
+            background-color: #16a34a;
+            color: white;
+        }
+        .btn-green:hover {
+            background-color: #15803d;
+        }
+        .btn-blue {
+            background-color: #2563eb;
+            color: white;
+        }
+        .btn-blue:hover {
+            background-color: #1d4ed8;
+        }
+        .btn-purple {
+            background-color: #9333ea;
+            color: white;
+        }
+        .btn-purple:hover {
+            background-color: #7e22ce;
+        }
+        .btn-gray {
+            background-color: #6b7280;
+            color: white;
+        }
+        .btn-gray:hover {
+            background-color: #4b5563;
+        }
+        .btn-light-gray {
+            background-color: #9ca3af;
+            color: white;
+        }
+        .btn-light-gray:hover {
+            background-color: #6b7280;
+        }
+        .story-content {
+            white-space: pre-wrap;
+            font-size: 0.875rem;
+            line-height: 1.75;
+            color: #1f2937;
+            background-color: #fffbeb;
+            padding: 1rem;
+            border-radius: 0.25rem;
+        }
+        @media (max-width: 640px) {
+            .modal-buttons {
+                flex-direction: column;
+            }
+            .btn-modal {
+                width: 100%;
+            }
+        }
     </style>
 </head>
-<body class="bg-gray-50">
-    <div class="max-w-4xl mx-auto p-4 h-screen flex flex-col">
-        <!-- Header -->
-        <div class="bg-green-700 text-white p-4 rounded-t-lg shadow-md">
-            <h1 class="text-2xl font-bold">🌲 林業ヒヤリハット報告チャット</h1>
-            <p class="text-sm text-green-100 mt-1">マイクボタンを押して話すか、テキストで入力してください</p>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🌲 林業ヒヤリハット報告チャット</h1>
+            <p>マイクボタンを押して話すか、テキストで入力してください</p>
         </div>
 
-        <!-- Chat Area -->
-        <div id="chatArea" class="flex-1 bg-white p-4 overflow-y-auto space-y-4 border-x border-gray-200">
-            <!-- Messages will be inserted here -->
-        </div>
+        <div id="chatArea" class="chat-area"></div>
 
-        <!-- Input Area -->
-        <div class="bg-white p-4 border-x border-b border-gray-200 rounded-b-lg shadow-md">
-            <div class="flex gap-2">
-                <button 
-                    id="voiceButton"
-                    onclick="toggleVoiceInput()"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2"
-                    title="音声入力"
-                >
-                    <span id="voiceIcon" class="text-2xl">🎤</span>
+        <div class="input-area">
+            <div class="input-row">
+                <button id="voiceButton" class="btn btn-voice" onclick="toggleVoiceInput()" title="音声入力">
+                    <span id="voiceIcon" style="font-size: 1.5rem;">🎤</span>
                 </button>
                 <input 
                     type="text" 
                     id="userInput" 
+                    class="text-input"
                     placeholder="メッセージを入力するか、マイクボタンで音声入力..."
-                    class="flex-1 border border-gray-300 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500"
                     onkeypress="if(event.key === 'Enter') sendMessage()"
                 />
-                <button 
-                    onclick="sendMessage()"
-                    class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors"
-                >
-                    送信
-                </button>
+                <button class="btn btn-send" onclick="sendMessage()">送信</button>
             </div>
-            <div class="mt-2 flex items-center gap-3">
-                <label class="flex items-center gap-2 cursor-pointer">
+            <div class="checkbox-row">
+                <label class="checkbox-label">
                     <input 
                         type="checkbox" 
                         id="autoReadToggle" 
+                        class="checkbox"
                         checked
                         onchange="toggleAutoRead()"
-                        class="w-4 h-4 text-green-600 rounded focus:ring-green-500"
                     />
-                    <span class="text-sm text-gray-700">返答を音声で読み上げる</span>
+                    <span>返答を音声で読み上げる</span>
                 </label>
-                <span id="voiceStatus" class="text-sm text-gray-500"></span>
+                <span id="voiceStatus" class="status-text"></span>
             </div>
-            <div id="buttonArea" class="mt-3 flex flex-wrap gap-2">
-                <!-- Quick reply buttons will be inserted here -->
-            </div>
+            <div id="buttonArea" class="button-area"></div>
         </div>
 
-        <!-- Report Modal -->
-        <div id="reportModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-            <div class="bg-white rounded-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-                <div class="p-6">
-                    <h2 class="text-2xl font-bold text-gray-800 mb-4">📋 ヒヤリハット報告書</h2>
-                    <div id="reportContent" class="prose max-w-none"></div>
-                    <div class="mt-6 flex flex-wrap gap-3">
-                        <button onclick="copyReport()" class="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors">
-                            📋 コピーする
-                        </button>
-                        <button onclick="downloadReport()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors">
-                            💾 ダウンロード
-                        </button>
-                        <button onclick="generateStory()" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors">
-                            📖 物語にする
-                        </button>
-                        <button onclick="closeModal()" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-4 py-3 rounded-lg font-semibold transition-colors">
-                            閉じる
-                        </button>
-                    </div>
+        <div id="reportModal" class="modal hidden">
+            <div class="modal-content">
+                <h2 class="modal-title" id="modalTitle">📋 ヒヤリハット報告書</h2>
+                <div id="reportContent"></div>
+                <div class="modal-buttons" id="modalButtons">
+                    <button class="btn-modal btn-green" onclick="copyReport()">📋 コピーする</button>
+                    <button class="btn-modal btn-blue" onclick="downloadReport()">💾 ダウンロード</button>
+                    <button class="btn-modal btn-purple" onclick="generateStory()">📖 物語にする</button>
+                    <button class="btn-modal btn-gray" onclick="closeModal()">閉じる</button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // 音声認識と音声合成の設定
         let recognition = null;
         let isRecording = false;
         let autoRead = true;
         let currentUtterance = null;
 
-        // 音声認識の初期化
         function initSpeechRecognition() {
             if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
                 const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -156,7 +412,7 @@
 
                 recognition.onerror = function(event) {
                     console.error('音声認識エラー:', event.error);
-                    document.getElementById('voiceStatus').textContent = 'エラーが発生しました';
+                    document.getElementById('voiceStatus').textContent = 'エラーが発生しました: ' + event.error;
                     stopRecording();
                 };
 
@@ -176,7 +432,6 @@
             if (isRecording) {
                 recognition.stop();
             } else {
-                // 既存の音声読み上げを停止
                 if (currentUtterance) {
                     speechSynthesis.cancel();
                 }
@@ -188,7 +443,7 @@
             isRecording = false;
             document.getElementById('voiceIcon').textContent = '🎤';
             document.getElementById('voiceButton').classList.remove('recording');
-            setTimeout(() => {
+            setTimeout(function() {
                 document.getElementById('voiceStatus').textContent = '';
             }, 3000);
         }
@@ -200,7 +455,6 @@
         function speakText(text) {
             if (!autoRead) return;
 
-            // 既存の読み上げを停止
             speechSynthesis.cancel();
 
             currentUtterance = new SpeechSynthesisUtterance(text);
@@ -208,9 +462,8 @@
             currentUtterance.rate = 1.0;
             currentUtterance.pitch = 1.0;
 
-            // 日本語の音声を探す
             const voices = speechSynthesis.getVoices();
-            const jaVoice = voices.find(voice => voice.lang.startsWith('ja'));
+            const jaVoice = voices.find(function(voice) { return voice.lang.startsWith('ja'); });
             if (jaVoice) {
                 currentUtterance.voice = jaVoice;
             }
@@ -218,7 +471,6 @@
             speechSynthesis.speak(currentUtterance);
         }
 
-        // 音声の準備
         if ('speechSynthesis' in window) {
             speechSynthesis.onvoiceschanged = function() {
                 speechSynthesis.getVoices();
@@ -237,8 +489,7 @@
                 prevention: '',
                 workerName: '',
                 reporterRole: ''
-            },
-            chatHistory: []
+            }
         };
 
         const questions = {
@@ -290,25 +541,21 @@
             }
         };
 
-        function addMessage(content, isUser = false, shouldSpeak = true) {
+        function addMessage(content, isUser, shouldSpeak) {
+            if (shouldSpeak === undefined) shouldSpeak = true;
+            
             const chatArea = document.getElementById('chatArea');
             const messageDiv = document.createElement('div');
-            messageDiv.className = `chat-message flex ${isUser ? 'justify-end' : 'justify-start'}`;
+            messageDiv.className = 'chat-message ' + (isUser ? 'message-right' : 'message-left');
             
             const bubble = document.createElement('div');
-            bubble.className = `max-w-[80%] rounded-lg p-3 ${
-                isUser 
-                    ? 'bg-green-600 text-white' 
-                    : 'bg-gray-100 text-gray-800'
-            }`;
-            bubble.style.whiteSpace = 'pre-wrap';
+            bubble.className = 'bubble ' + (isUser ? 'bubble-user' : 'bubble-bot');
             bubble.textContent = content;
             
             messageDiv.appendChild(bubble);
             chatArea.appendChild(messageDiv);
             chatArea.scrollTop = chatArea.scrollHeight;
 
-            // ボットのメッセージを音声で読み上げ
             if (!isUser && shouldSpeak) {
                 speakText(content);
             }
@@ -318,16 +565,8 @@
             const chatArea = document.getElementById('chatArea');
             const indicatorDiv = document.createElement('div');
             indicatorDiv.id = 'typingIndicator';
-            indicatorDiv.className = 'chat-message flex justify-start';
-            indicatorDiv.innerHTML = `
-                <div class="bg-gray-100 rounded-lg p-3">
-                    <div class="typing-indicator">
-                        <span></span>
-                        <span></span>
-                        <span></span>
-                    </div>
-                </div>
-            `;
+            indicatorDiv.className = 'chat-message message-left';
+            indicatorDiv.innerHTML = '<div class="bubble bubble-bot"><div class="typing-indicator"><span></span><span></span><span></span></div></div>';
             chatArea.appendChild(indicatorDiv);
             chatArea.scrollTop = chatArea.scrollHeight;
         }
@@ -344,11 +583,11 @@
             buttonArea.innerHTML = '';
             
             if (buttons && buttons.length > 0) {
-                buttons.forEach(buttonText => {
+                buttons.forEach(function(buttonText) {
                     const button = document.createElement('button');
                     button.textContent = buttonText;
-                    button.className = 'bg-green-100 hover:bg-green-200 text-green-800 px-4 py-2 rounded-lg text-sm font-medium transition-colors';
-                    button.onclick = () => {
+                    button.className = 'btn-quick';
+                    button.onclick = function() {
                         document.getElementById('userInput').value = buttonText;
                         sendMessage();
                     };
@@ -363,32 +602,27 @@
             
             if (!message) return;
             
-            // 音声読み上げを停止
             speechSynthesis.cancel();
             
             addMessage(message, true, false);
             input.value = '';
             
-            // Clear quick reply buttons
             document.getElementById('buttonArea').innerHTML = '';
             
-            // Store user response
             const currentQuestion = questions[conversationState.stage];
             if (currentQuestion.field) {
                 conversationState.data[currentQuestion.field] = message;
             }
             
-            // Move to next stage
             conversationState.stage = currentQuestion.next;
             
-            // Show bot response
             showTypingIndicator();
-            setTimeout(() => {
+            setTimeout(function() {
                 hideTypingIndicator();
                 
                 if (conversationState.stage === 'complete') {
                     addMessage(questions.complete.message);
-                    setTimeout(() => {
+                    setTimeout(function() {
                         generateReport();
                     }, 1000);
                 } else {
@@ -406,54 +640,25 @@
             const now = new Date();
             const reportDate = now.toLocaleString('ja-JP');
             
-            const reportHTML = `
-                <div class="space-y-4">
-                    <div class="bg-green-50 border-l-4 border-green-600 p-4">
-                        <p class="text-sm text-gray-600">報告日時: ${reportDate}</p>
-                    </div>
-                    
-                    <div class="border-b pb-3">
-                        <h3 class="font-bold text-gray-700 mb-1">📅 発生日時</h3>
-                        <p class="text-gray-800">${data.date}</p>
-                    </div>
-                    
-                    <div class="border-b pb-3">
-                        <h3 class="font-bold text-gray-700 mb-1">📍 発生場所</h3>
-                        <p class="text-gray-800">${data.location}</p>
-                    </div>
-                    
-                    <div class="border-b pb-3">
-                        <h3 class="font-bold text-gray-700 mb-1">⚠️ 状況・経緯</h3>
-                        <p class="text-gray-800">${data.situation}</p>
-                    </div>
-                    
-                    <div class="border-b pb-3">
-                        <h3 class="font-bold text-gray-700 mb-1">🔄 取った行動</h3>
-                        <p class="text-gray-800">${data.action}</p>
-                    </div>
-                    
-                    <div class="border-b pb-3">
-                        <h3 class="font-bold text-gray-700 mb-1">📊 結果</h3>
-                        <p class="text-gray-800">${data.result}</p>
-                    </div>
-                    
-                    <div class="border-b pb-3">
-                        <h3 class="font-bold text-gray-700 mb-1">🔍 原因分析</h3>
-                        <p class="text-gray-800">${data.cause}</p>
-                    </div>
-                    
-                    <div class="border-b pb-3">
-                        <h3 class="font-bold text-gray-700 mb-1">✅ 再発防止策</h3>
-                        <p class="text-gray-800">${data.prevention}</p>
-                    </div>
-                    
-                    <div class="bg-gray-50 p-4 rounded">
-                        <p class="text-sm text-gray-700"><strong>報告者:</strong> ${data.workerName}</p>
-                    </div>
-                </div>
-            `;
+            const reportHTML = '<div class="report-alert"><p style="font-size: 0.875rem; color: #6b7280;">報告日時: ' + reportDate + '</p></div>' +
+                '<div class="report-section"><div class="report-label">📅 発生日時</div><div class="report-value">' + data.date + '</div></div>' +
+                '<div class="report-section"><div class="report-label">📍 発生場所</div><div class="report-value">' + data.location + '</div></div>' +
+                '<div class="report-section"><div class="report-label">⚠️ 状況・経緯</div><div class="report-value">' + data.situation + '</div></div>' +
+                '<div class="report-section"><div class="report-label">🔄 取った行動</div><div class="report-value">' + data.action + '</div></div>' +
+                '<div class="report-section"><div class="report-label">📊 結果</div><div class="report-value">' + data.result + '</div></div>' +
+                '<div class="report-section"><div class="report-label">🔍 原因分析</div><div class="report-value">' + data.cause + '</div></div>' +
+                '<div class="report-section"><div class="report-label">✅ 再発防止策</div><div class="report-value">' + data.prevention + '</div></div>' +
+                '<div class="report-info"><p style="font-size: 0.875rem; color: #374151;"><strong>報告者:</strong> ' + data.workerName + '</p></div>';
             
             document.getElementById('reportContent').innerHTML = reportHTML;
+            document.getElementById('modalTitle').textContent = '📋 ヒヤリハット報告書';
+            
+            const buttonContainer = document.getElementById('modalButtons');
+            buttonContainer.innerHTML = '<button class="btn-modal btn-green" onclick="copyReport()">📋 コピーする</button>' +
+                '<button class="btn-modal btn-blue" onclick="downloadReport()">💾 ダウンロード</button>' +
+                '<button class="btn-modal btn-purple" onclick="generateStory()">📖 物語にする</button>' +
+                '<button class="btn-modal btn-gray" onclick="closeModal()">閉じる</button>';
+            
             document.getElementById('reportModal').classList.remove('hidden');
         }
 
@@ -462,44 +667,25 @@
             const now = new Date();
             const reportDate = now.toLocaleString('ja-JP');
             
-            return `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-林業ヒヤリハット報告書
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-報告日時: ${reportDate}
-
-【発生日時】
-${data.date}
-
-【発生場所】
-${data.location}
-
-【状況・経緯】
-${data.situation}
-
-【取った行動】
-${data.action}
-
-【結果】
-${data.result}
-
-【原因分析】
-${data.cause}
-
-【再発防止策】
-${data.prevention}
-
-【報告者情報】
-報告者: ${data.workerName}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            `.trim();
+            return '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+                '林業ヒヤリハット報告書\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                '報告日時: ' + reportDate + '\n\n' +
+                '【発生日時】\n' + data.date + '\n\n' +
+                '【発生場所】\n' + data.location + '\n\n' +
+                '【状況・経緯】\n' + data.situation + '\n\n' +
+                '【取った行動】\n' + data.action + '\n\n' +
+                '【結果】\n' + data.result + '\n\n' +
+                '【原因分析】\n' + data.cause + '\n\n' +
+                '【再発防止策】\n' + data.prevention + '\n\n' +
+                '【報告者情報】\n' +
+                '報告者: ' + data.workerName + '\n\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
         }
 
         function copyReport() {
             const reportText = getReportText();
-            navigator.clipboard.writeText(reportText).then(() => {
+            navigator.clipboard.writeText(reportText).then(function() {
                 alert('報告書をクリップボードにコピーしました！');
             });
         }
@@ -510,7 +696,7 @@ ${data.prevention}
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `ヒヤリハット報告_${new Date().toISOString().split('T')[0]}.txt`;
+            a.download = 'ヒヤリハット報告_' + new Date().toISOString().split('T')[0] + '.txt';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -520,14 +706,18 @@ ${data.prevention}
         function closeModal() {
             document.getElementById('reportModal').classList.add('hidden');
             
-            // Show restart button
-            setTimeout(() => {
+            setTimeout(function() {
                 const buttonArea = document.getElementById('buttonArea');
                 buttonArea.innerHTML = '';
                 const restartButton = document.createElement('button');
                 restartButton.textContent = '🔄 新しい報告を作成';
-                restartButton.className = 'bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors';
-                restartButton.onclick = () => location.reload();
+                restartButton.className = 'btn-green';
+                restartButton.style.padding = '0.75rem 1.5rem';
+                restartButton.style.borderRadius = '0.5rem';
+                restartButton.style.fontWeight = '600';
+                restartButton.style.cursor = 'pointer';
+                restartButton.style.border = 'none';
+                restartButton.onclick = function() { location.reload(); };
                 buttonArea.appendChild(restartButton);
             }, 300);
         }
@@ -535,7 +725,6 @@ ${data.prevention}
         function generateStory() {
             const data = conversationState.data;
             
-            // 語り口のパターンをランダムに選択
             const patterns = [
                 generatePattern1(data),
                 generatePattern2(data),
@@ -547,372 +736,203 @@ ${data.prevention}
             const randomIndex = Math.floor(Math.random() * patterns.length);
             const story = patterns[randomIndex];
             
-            // 物語を表示
             const reportContent = document.getElementById('reportContent');
-            reportContent.innerHTML = `<pre class="whitespace-pre-wrap text-sm leading-relaxed text-gray-800 bg-amber-50 p-4 rounded">${story}</pre>`;
+            reportContent.innerHTML = '<div class="story-content">' + story + '</div>';
             
-            // 現在の物語を保存（コピー用）
             window.currentStory = story;
             
-            // ボタンのテキストを変更
-            const buttonContainer = document.querySelector('#reportModal .mt-6');
-            buttonContainer.innerHTML = `
-                <button onclick="copyStory()" class="w-full sm:flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors">
-                    📋 物語をコピー
-                </button>
-                <button onclick="downloadStory()" class="w-full sm:flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors">
-                    💾 物語をダウンロード
-                </button>
-                <button onclick="generateStory()" class="w-full sm:flex-1 bg-purple-600 hover:bg-purple-700 text-white px-4 py-3 rounded-lg font-semibold transition-colors">
-                    🔄 別の語り口で
-                </button>
-                <button onclick="backToReport()" class="w-full sm:flex-1 bg-gray-400 hover:bg-gray-500 text-white px-4 py-3 rounded-lg font-semibold transition-colors">
-                    ← 報告書に戻る
-                </button>
-                <button onclick="closeModal()" class="w-full sm:flex-1 bg-gray-500 hover:bg-gray-600 text-white px-4 py-3 rounded-lg font-semibold transition-colors">
-                    閉じる
-                </button>
-            `;
-            buttonContainer.className = 'mt-6 flex flex-col sm:flex-row flex-wrap gap-3';
+            const buttonContainer = document.getElementById('modalButtons');
+            buttonContainer.innerHTML = '<button class="btn-modal btn-green" onclick="copyStory()">📋 物語をコピー</button>' +
+                '<button class="btn-modal btn-blue" onclick="downloadStory()">💾 物語をダウンロード</button>' +
+                '<button class="btn-modal btn-purple" onclick="generateStory()">🔄 別の語り口で</button>' +
+                '<button class="btn-modal btn-light-gray" onclick="backToReport()">← 報告書に戻る</button>' +
+                '<button class="btn-modal btn-gray" onclick="closeModal()">閉じる</button>';
             
-            // タイトルを変更
-            document.querySelector('#reportModal h2').textContent = '📖 教育用物語';
+            document.getElementById('modalTitle').textContent = '📖 教育用物語';
         }
 
-        // パターン1: ドキュメンタリー風
         function generatePattern1(data) {
-            return `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【安全教育資料】ある日の現場で
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-■ タイトル：ヒヤリとした瞬間
-
-${data.date}のことだった。
-
-${data.location}で作業をしていた${data.workerName}さんは、いつものように仕事を進めていた。
-
-${data.situation}
-
-その時である。
-
-${data.action}
-
-幸い、${data.result}
-
-「危なかった...」
-
-${data.workerName}さんは胸をなでおろした。
-
-後で冷静に考えてみると、この出来事には明確な原因があった。
-
-${data.cause}
-
-この経験から、${data.workerName}さんは大切なことを学んだ。
-
-${data.prevention}
-
-「同じ過ちは二度と繰り返さない」
-
-${data.workerName}さんはそう心に誓った。
-
-そして、この経験を仲間たちと共有することにした。
-自分と同じ目に遭う人が一人でも減るように。
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-【この事例から学ぶべきこと】
-
-◆ 危険のポイント
-  ${data.cause}
-
-◆ 対策
-  ${data.prevention}
-
-◆ みなさんへのメッセージ
-  この事例は、日常的な作業の中でも思わぬ危険が潜んでいることを
-  教えてくれます。「自分は大丈夫」と思わず、常に安全を意識して
-  作業に取り組みましょう。
-
-  報告者：${data.workerName}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            `.trim();
+            return '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+                '【安全教育資料】ある日の現場で\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                '■ タイトル：ヒヤリとした瞬間\n\n' +
+                data.date + 'のことだった。\n\n' +
+                data.location + 'で作業をしていた' + data.workerName + 'さんは、いつものように仕事を進めていた。\n\n' +
+                data.situation + '\n\n' +
+                'その時である。\n\n' +
+                data.action + '\n\n' +
+                '幸い、' + data.result + '\n\n' +
+                '「危なかった...」\n\n' +
+                data.workerName + 'さんは胸をなでおろした。\n\n' +
+                '後で冷静に考えてみると、この出来事には明確な原因があった。\n\n' +
+                data.cause + '\n\n' +
+                'この経験から、' + data.workerName + 'さんは大切なことを学んだ。\n\n' +
+                data.prevention + '\n\n' +
+                '「同じ過ちは二度と繰り返さない」\n\n' +
+                data.workerName + 'さんはそう心に誓った。\n\n' +
+                'そして、この経験を仲間たちと共有することにした。\n' +
+                '自分と同じ目に遭う人が一人でも減るように。\n\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                '【この事例から学ぶべきこと】\n\n' +
+                '◆ 危険のポイント\n  ' + data.cause + '\n\n' +
+                '◆ 対策\n  ' + data.prevention + '\n\n' +
+                '◆ みなさんへのメッセージ\n' +
+                '  この事例は、日常的な作業の中でも思わぬ危険が潜んでいることを\n' +
+                '  教えてくれます。「自分は大丈夫」と思わず、常に安全を意識して\n' +
+                '  作業に取り組みましょう。\n\n' +
+                '  報告者：' + data.workerName + '\n\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
         }
 
-        // パターン2: 対話形式
         function generatePattern2(data) {
-            return `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【安全朝礼資料】先輩から学ぶ安全のコツ
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-新人：「${data.workerName}さん、何か最近ヒヤッとしたことありました？」
-
-${data.workerName}：「ああ、実はな。${data.date}の話なんだが...」
-
-■ その日の出来事
-
-場所は${data.location}。
-
-${data.workerName}さんが体験した出来事だ。
-
-「その時はこうだった。${data.situation}」
-
-新人：「それで、どうなったんですか？」
-
-「${data.action}」
-
-新人：「大丈夫だったんですか？」
-
-「${data.result}」
-
-新人：「良かったですね...でも、なんでそうなったんでしょう？」
-
-${data.workerName}：「後で考えたんだが、${data.cause}」
-
-新人：「なるほど...次からはどうすればいいんですか？」
-
-「${data.prevention}」
-
-新人：「勉強になります。気をつけます！」
-
-${data.workerName}：「おう。俺みたいにヒヤッとする前に、お前は気をつけてくれよ」
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-【安全のポイント】
-✓ 原因：${data.cause}
-✓ 対策：${data.prevention}
-
-経験者の声を聞いて、同じ失敗を繰り返さないようにしましょう。
-
-報告：${data.workerName}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            `.trim();
+            return '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+                '【安全朝礼資料】先輩から学ぶ安全のコツ\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                '新人：「' + data.workerName + 'さん、何か最近ヒヤッとしたことありました？」\n\n' +
+                data.workerName + '：「ああ、実はな。' + data.date + 'の話なんだが...」\n\n' +
+                '■ その日の出来事\n\n' +
+                '場所は' + data.location + '。\n\n' +
+                data.workerName + 'さんが体験した出来事だ。\n\n' +
+                '「その時はこうだった。' + data.situation + '」\n\n' +
+                '新人：「それで、どうなったんですか？」\n\n' +
+                '「' + data.action + '」\n\n' +
+                '新人：「大丈夫だったんですか？」\n\n' +
+                '「' + data.result + '」\n\n' +
+                '新人：「良かったですね...でも、なんでそうなったんでしょう？」\n\n' +
+                data.workerName + '：「後で考えたんだが、' + data.cause + '」\n\n' +
+                '新人：「なるほど...次からはどうすればいいんですか？」\n\n' +
+                '「' + data.prevention + '」\n\n' +
+                '新人：「勉強になります。気をつけます！」\n\n' +
+                data.workerName + '：「おう。俺みたいにヒヤッとする前に、お前は気をつけてくれよ」\n\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                '【安全のポイント】\n' +
+                '✓ 原因：' + data.cause + '\n' +
+                '✓ 対策：' + data.prevention + '\n\n' +
+                '経験者の声を聞いて、同じ失敗を繰り返さないようにしましょう。\n\n' +
+                '報告：' + data.workerName + '\n\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
         }
 
-        // パターン3: 時系列レポート風
         function generatePattern3(data) {
-            return `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【ヒヤリハット事例レポート】
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-▼ 発生日時
-${data.date}
-
-▼ 発生場所
-${data.location}
-
-▼ 作業者
-${data.workerName}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-■ 何が起きたのか？
-
-作業は順調に進んでいた。
-しかし——
-
-${data.situation}
-
-予期せぬ事態が発生した。
-
-${data.action}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-■ 結果
-
-${data.result}
-
-今回は幸いにも大事には至らなかった。
-だが、一歩間違えれば重大な事故につながっていた可能性がある。
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-■ 原因分析
-
-なぜこのような事態が発生したのか？
-
-【分析結果】
-${data.cause}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-■ 再発防止策
-
-同じことを繰り返さないために：
-
-【対策】
-${data.prevention}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-■ 報告者からのメッセージ
-
-「私の経験が、皆さんの安全につながれば幸いです。
- どんなに慣れた作業でも、油断は禁物。
- 常に安全第一で作業に臨みましょう」
-
-—— ${data.workerName}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            `.trim();
+            return '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+                '【ヒヤリハット事例レポート】\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                '▼ 発生日時\n' + data.date + '\n\n' +
+                '▼ 発生場所\n' + data.location + '\n\n' +
+                '▼ 作業者\n' + data.workerName + '\n\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                '■ 何が起きたのか？\n\n' +
+                '作業は順調に進んでいた。\n' +
+                'しかし——\n\n' +
+                data.situation + '\n\n' +
+                '予期せぬ事態が発生した。\n\n' +
+                data.action + '\n\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                '■ 結果\n\n' +
+                data.result + '\n\n' +
+                '今回は幸いにも大事には至らなかった。\n' +
+                'だが、一歩間違えれば重大な事故につながっていた可能性がある。\n\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                '■ 原因分析\n\n' +
+                'なぜこのような事態が発生したのか？\n\n' +
+                '【分析結果】\n' +
+                data.cause + '\n\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                '■ 再発防止策\n\n' +
+                '同じことを繰り返さないために：\n\n' +
+                '【対策】\n' +
+                data.prevention + '\n\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                '■ 報告者からのメッセージ\n\n' +
+                '「私の経験が、皆さんの安全につながれば幸いです。\n' +
+                ' どんなに慣れた作業でも、油断は禁物。\n' +
+                ' 常に安全第一で作業に臨みましょう」\n\n' +
+                '—— ' + data.workerName + '\n\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
         }
 
-        // パターン4: 劇場風
         function generatePattern4(data) {
-            return `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【安全教育ショートストーリー】
-もし、あの時...
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-時：${data.date}
-所：${data.location}
-人：${data.workerName}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-【第一幕】日常の作業
-
-朝から現場は活気に満ちていた。
-
-${data.workerName}も、いつもと変わらぬ一日が始まると思っていた。
-
-${data.situation}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-【第二幕】予期せぬ瞬間
-
-突然——
-
-${data.action}
-
-心臓が一瞬止まるかと思った。
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-【第三幕】幸運と教訓
-
-結果：${data.result}
-
-「もし、タイミングがほんの少しでもずれていたら...」
-
-そう考えると、背筋が凍る思いだった。
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-【エピローグ】学んだこと
-
-${data.workerName}は気づいた。
-
-今回の出来事の背景には、こんな要因があったのだと——
-
-${data.cause}
-
-「これからは、こうしよう」
-
-${data.workerName}は決意を新たにした。
-
-${data.prevention}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-【観客の皆さんへ】
-
-このストーリーは、実際に起きた出来事です。
-舞台の上の出来事ではありません。
-
-あなたの職場でも、明日起こりうることなのです。
-
-「自分には関係ない」
-そう思った瞬間が、一番危険なのです。
-
-語り部：${data.workerName}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            `.trim();
+            return '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+                '【安全教育ショートストーリー】\n' +
+                'もし、あの時...\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                '時：' + data.date + '\n' +
+                '所：' + data.location + '\n' +
+                '人：' + data.workerName + '\n\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                '【第一幕】日常の作業\n\n' +
+                '朝から現場は活気に満ちていた。\n\n' +
+                data.workerName + 'も、いつもと変わらぬ一日が始まると思っていた。\n\n' +
+                data.situation + '\n\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                '【第二幕】予期せぬ瞬間\n\n' +
+                '突然——\n\n' +
+                data.action + '\n\n' +
+                '心臓が一瞬止まるかと思った。\n\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                '【第三幕】幸運と教訓\n\n' +
+                '結果：' + data.result + '\n\n' +
+                '「もし、タイミングがほんの少しでもずれていたら...」\n\n' +
+                'そう考えると、背筋が凍る思いだった。\n\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                '【エピローグ】学んだこと\n\n' +
+                data.workerName + 'は気づいた。\n\n' +
+                '今回の出来事の背景には、こんな要因があったのだと——\n\n' +
+                data.cause + '\n\n' +
+                '「これからは、こうしよう」\n\n' +
+                data.workerName + 'は決意を新たにした。\n\n' +
+                data.prevention + '\n\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                '【観客の皆さんへ】\n\n' +
+                'このストーリーは、実際に起きた出来事です。\n' +
+                '舞台の上の出来事ではありません。\n\n' +
+                'あなたの職場でも、明日起こりうることなのです。\n\n' +
+                '「自分には関係ない」\n' +
+                'そう思った瞬間が、一番危険なのです。\n\n' +
+                '語り部：' + data.workerName + '\n\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
         }
 
-        // パターン5: 手紙風
         function generatePattern5(data) {
-            return `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-【現場から現場へ】安全への手紙
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-親愛なる仲間たちへ
-
-${data.workerName}です。
-
-今日は、皆さんに伝えたいことがあって、この手紙を書いています。
-
-${data.date}、私は${data.location}で作業をしていました。
-
-いつもと同じ、何気ない一日のはずでした。
-
-ところが——
-
-${data.situation}
-
-その瞬間、私は思わず身構えました。
-
-${data.action}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-幸いなことに、${data.result}
-
-でも、正直に言います。
-心臓が止まるかと思うほど、怖かった。
-
-家に帰って、この日のことを何度も思い返しました。
-
-「なぜ、あんなことが起きたんだろう？」
-
-答えは明白でした。
-
-${data.cause}
-
-もっと注意していれば、防げたはずです。
-もっと慎重であれば、あんなヒヤッとすることはなかったはずです。
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-だからこそ、皆さんにお願いがあります。
-
-${data.prevention}
-
-私のような経験を、皆さんにはしてほしくありません。
-
-いや、私だけでなく、皆さん自身も、
-家族が待つ家に、無事に帰りたいですよね？
-
-安全は、一人ひとりの意識から始まります。
-
-「これくらい大丈夫」
-「いつもやってるから」
-
-そんな油断が、取り返しのつかない事故を招くのです。
-
-どうか、私の経験を無駄にしないでください。
-
-皆さんの安全を、心から願っています。
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-${data.date}
-${data.workerName} より
-
-P.S. この経験を共有することで、少しでも皆さんの役に立てれば嬉しいです。
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            `.trim();
+            return '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n' +
+                '【現場から現場へ】安全への手紙\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                '親愛なる仲間たちへ\n\n' +
+                data.workerName + 'です。\n\n' +
+                '今日は、皆さんに伝えたいことがあって、この手紙を書いています。\n\n' +
+                data.date + '、私は' + data.location + 'で作業をしていました。\n\n' +
+                'いつもと同じ、何気ない一日のはずでした。\n\n' +
+                'ところが——\n\n' +
+                data.situation + '\n\n' +
+                'その瞬間、私は思わず身構えました。\n\n' +
+                data.action + '\n\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                '幸いなことに、' + data.result + '\n\n' +
+                'でも、正直に言います。\n' +
+                '心臓が止まるかと思うほど、怖かった。\n\n' +
+                '家に帰って、この日のことを何度も思い返しました。\n\n' +
+                '「なぜ、あんなことが起きたんだろう？」\n\n' +
+                '答えは明白でした。\n\n' +
+                data.cause + '\n\n' +
+                'もっと注意していれば、防げたはずです。\n' +
+                'もっと慎重であれば、あんなヒヤッとすることはなかったはずです。\n\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                'だからこそ、皆さんにお願いがあります。\n\n' +
+                data.prevention + '\n\n' +
+                '私のような経験を、皆さんにはしてほしくありません。\n\n' +
+                'いや、私だけでなく、皆さん自身も、\n' +
+                '家族が待つ家に、無事に帰りたいですよね？\n\n' +
+                '安全は、一人ひとりの意識から始まります。\n\n' +
+                '「これくらい大丈夫」\n' +
+                '「いつもやってるから」\n\n' +
+                'そんな油断が、取り返しのつかない事故を招くのです。\n\n' +
+                'どうか、私の経験を無駄にしないでください。\n\n' +
+                '皆さんの安全を、心から願っています。\n\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n\n' +
+                data.date + '\n' +
+                data.workerName + ' より\n\n' +
+                'P.S. この経験を共有することで、少しでも皆さんの役に立てれば嬉しいです。\n\n' +
+                '━━━━━━━━━━━━━━━━━━━━━━━━━━━━';
         }
 
         function getStoryText() {
@@ -921,7 +941,7 @@ P.S. この経験を共有することで、少しでも皆さんの役に立て
 
         function copyStory() {
             const storyText = getStoryText();
-            navigator.clipboard.writeText(storyText).then(() => {
+            navigator.clipboard.writeText(storyText).then(function() {
                 alert('物語をクリップボードにコピーしました！');
             });
         }
@@ -932,7 +952,7 @@ P.S. この経験を共有することで、少しでも皆さんの役に立て
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `安全教育物語_${new Date().toISOString().split('T')[0]}.txt`;
+            a.download = '安全教育物語_' + new Date().toISOString().split('T')[0] + '.txt';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -940,11 +960,9 @@ P.S. この経験を共有することで、少しでも皆さんの役に立て
         }
 
         function backToReport() {
-            // 元の報告書を再生成
             generateReport();
         }
 
-        // Initialize chat
         window.onload = function() {
             addMessage("こんにちは。ヒヤリハット事例の報告をお願いします。\n\nまず、いつ起きたことですか?（例：今日、昨日、1月15日など）");
         };
